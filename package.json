@@ -1,0 +1,34 @@
+{
+  "name": "sensible-nft-cmd",
+  "version": "0.2.0",
+  "description": "sensible-nft-cmd",
+  "main": "",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "watch": "node watcher.js",
+    "gen-desc": "node watcher.js --gen-desc"
+  },
+  "keywords": [
+    "sCrypt",
+    "testing",
+    "Smart Contract",
+    "bitcoin",
+    "bitcoin-sv"
+  ],
+  "author": "sCrypt Inc",
+  "license": "MIT",
+  "dependencies": {
+    "hns-app": "^1.0.1",
+    "hns-dao-plugin": "^1.0.1",
+    "hns-http-plugin": "^1.0.1",
+    "hns-logger-plugin": "^1.0.0",
+    "request": "^2.88.2",
+    "glob": "^7.1.6",
+    "lodash": "=4.17.11",
+    "moment": "^2.29.1",
+    "scryptlib": "=0.2.27",
+    "watch": "^1.0.2"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "default": {
+    "wif": "cN2gor4vF2eQ1PmzTzJEwps6uvTK4QToUgTxGHN1xUxZ34djL8vR",
+    "apiTarget": "whatsonchain",
+    "network": "test",
+    "feeb": 0.5,
+    "minSplit": 80,
+    "maxSplit": 100,
+    "unitSatoshis": 10000,
+    "contractSatoshis": 1000,
+    "satotxApiPrefix": "https://api.satotx.com"
+  },
+  "production": {
+    "wif": "xxxxxx",
+    "apiTarget": "whatsonchain",
+    "network": "main",
+    "feeb": 0.5,
+    "minSplit": 80,
+    "maxSplit": 100,
+    "unitSatoshis": 30000,
+    "contractSatoshis": 3000,
+    "satotxApiPrefix": "https://api.satotx.com"
+  }
+}
