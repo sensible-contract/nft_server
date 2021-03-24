@@ -1,8 +1,10 @@
 const { bsv } = require("scryptlib");
 const { app } = require("../app");
+const { ErrCode } = require("../const");
 const { UtxoDao } = require("../dao/UtxoDao");
 const { sighashType } = require("../lib/sensible_nft/NFT");
 const { ScriptHelper } = require("../lib/sensible_nft/ScriptHelper");
+const { CodeError } = require("../util/CodeError");
 const { PrivateKeyMgr } = require("./PrivateKeyMgr");
 
 const MIN_FEE = 546;
@@ -35,8 +37,10 @@ class UtxoMgr {
   }
 
   /**
-   * 拆分UTXO
-   * 找到一个最大的UTXO将其拆分
+   * adjust utxos
+   * When the amount of utxos smaller than minSplit
+   * the max utxo will be splited.
+   * @returns
    */
   static async adjustUtxos() {
     console.log(
@@ -57,10 +61,9 @@ class UtxoMgr {
     let utxo = this.utxos[0];
 
     if (!utxo) {
-      throw "insufficient balance.";
+      throw "insufficient balance!";
     }
 
-    console.log(utxo);
     const unitSatoshis = app.get("nftConfig").unitSatoshis;
     const toSplitCount = Math.min(
       Math.floor(utxo.satoshis / unitSatoshis),
@@ -89,7 +92,7 @@ class UtxoMgr {
       if (
         leftSatoshis < Math.ceil(tx._estimateSize() * app.get("nftConfig").feeb)
       ) {
-        console.log("不足");
+        console.log("Not enough satoshis to split.");
         break;
       }
       tx.addOutput(
@@ -137,7 +140,9 @@ class UtxoMgr {
   }
 
   /**
-   * 返回一个适合进行genesis的UTXO合集
+   * fetch a batch of utxo
+   * @param {number} estimateSatoshis the satoshis estimated to use
+   * @returns
    */
   static fetchUtxos(estimateSatoshis) {
     this.utxos.sort((a, b) => a.rootHeight - b.rootHeight); //从浅到深
@@ -153,20 +158,57 @@ class UtxoMgr {
     return utxos;
   }
 
-  static fetchUtxo(estimateSatoshis) {
-    this.utxos.sort((a, b) => a.rootHeight - b.rootHeight); //从浅到深
-    let utxo;
-    for (let i = 0; i < this.utxos.length; i++) {
-      if (this.utxos[i].satoshis >= estimateSatoshis) {
-        utxo = this.utxos.splice(i, i + 1)[0];
-        break;
-      }
-    }
-    return utxo;
-  }
-
+  /**
+   * put the utxos back into the pool.
+   * @param {array} a batch of utxo
+   */
   static recycleUtxos(utxos) {
     this.utxos = this.utxos.concat(utxos);
+  }
+
+  /**
+   * try to use a batch of utxo.If the operation failed, then make sure they would be recycled to the pool.
+   * @param {number} estimateSatoshis the satoshis estimated to use
+   * @param {function} promiseCallback the callback function
+   * @returns
+   */
+  static async tryUseUtxos(estimateSatoshis, promiseCallback) {
+    const utxos = this.fetchUtxos(estimateSatoshis);
+    if (utxos.length == 0) {
+      throw "insufficient utxo";
+    }
+    try {
+      let _res = await promiseCallback(utxos);
+      utxos.forEach((v) => {
+        UtxoDao.removeUtxo(
+          PrivateKeyMgr.privateKey.toAddress().toString(),
+          v.txId,
+          v.outputIndex
+        );
+      });
+      return _res;
+    } catch (e) {
+      if (e.resData) {
+        if (
+          e.resData.body &&
+          e.resData.body.includes("too-long-mempool-chain")
+        ) {
+          utxos.forEach((v) => {
+            v.rootHeight++;
+            UtxoDao.updateUtxo(
+              PrivateKeyMgr.privateKey.toAddress().toString(),
+              v.txId,
+              v.outputIndex,
+              v
+            );
+          });
+        }
+      }
+      UtxoMgr.recycleUtxos(utxos);
+      throw e;
+    } finally {
+      UtxoMgr.adjustUtxos();
+    }
   }
 }
 

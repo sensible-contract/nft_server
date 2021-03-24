@@ -1,5 +1,5 @@
-import * as readline from "readline";
-export class Utils {
+const readline = require("readline");
+class Utils {
   static getErrorString(error) {
     if (!error) {
       return "";
@@ -32,7 +32,7 @@ export class Utils {
     }
   }
 
-  static readSyncByRl = function (tips) {
+  static readSyncByRl(tips) {
     tips = tips || "> ";
     return new Promise((resolve) => {
       const rl = readline.createInterface({
@@ -45,7 +45,7 @@ export class Utils {
         resolve(answer.trim());
       });
     });
-  };
+  }
 }
 
 module.exports = {

@@ -65,10 +65,12 @@ src/config/nft.json
     "maxSplit": 100,//utxo最大拆分数量
     "unitSatoshis": 10000,//拆分的每个utxo所含金额
     "contractSatoshis": 1000, //合约输出所含金额
-    "satotxApiPrefix": "https://api.satotx.com"//签名器API，可以自行部署 https://github.com/sensing-contract/satotx
+    "satotxApiPrefix": "https://api.satotx.com",//签名器API，可以自行部署 https://github.com/sensing-contract/satotx
+    "satotxPubKey":"25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5"//visit https://api.satotx.com to get the public key
   },
   "production": {//可以追加其他的配置，在启动的时候需要指定 env=production
-    "wif": "xxxxxx",
+    "wif": "",
+    "cryptedWif":"U2FsdGVkX1++zNjes6yFJqGdLSTLegCgdDevX3UVkYYia1tCbqebSwtLKkUP7BVt8eutVcTAAn4Bm83V/fdgvD7UpBpxzQldAHbkdPGK35I=",//to avoid expose wif
     "apiTarget": "whatsonchain",
     "network": "main",
     "feeb": 0.5,
@@ -76,7 +78,8 @@ src/config/nft.json
     "maxSplit": 100,
     "unitSatoshis": 30000,
     "contractSatoshis": 3000,
-    "satotxApiPrefix": "https://api.satotx.com"
+    "satotxApiPrefix": "https://api.satotx.com",
+    "satotxPubKey":"25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5"
   }
 }
 ```
@@ -87,10 +90,10 @@ and then just run
 node src/app.js
 ```
 
-or
+or run in security
 
 ```
-node src/app.js env=production
+WIF_PWD=e09477a8030b0743351bf947b7e454e77aac6445 node src/app.js env=production
 ```
 
 ## <span id="apimethod">Api Method</span>
@@ -223,4 +226,14 @@ curl -X POST -H "Content-Type: application/json" --data '{
     "txId": "b584e8250a48b4034059c9dee5829393e403666f6872e82a69b89f79c886a3fa"
   }
 }
+```
+
+## <span id="tools">Tools</span>
+
+### gen_crypto_wif
+
+```
+node tools/gen_crypto_wif.js --wif L29ZQZ6aHxXFA1wu2Z7bQzNzz9Bb14o6N8utveZXBhrGKpfarj9Y
+
+cryptedWif: U2FsdGVkX19T6BQQXSvmLzL3KJ+s7sKKpM71CSNUclkZBM5vSDRIibteizhkuBPnEG57Cy/hI7sIPBOU60EdiYS0kzHjE0d9N0KrOjNSgAs= WIF_PWD: e09477a8030b0743351bf947b7e454e77aac6445
 ```

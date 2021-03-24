@@ -36,8 +36,14 @@ var app = exports.app;
 
     //todo
     const { PrivateKeyMgr } = require("./domain/PrivateKeyMgr");
+    const { AES } = require("./lib/crypto");
     app.loadConfig("nftConfig", require("./config/nft.json"));
-    PrivateKeyMgr.init(app.get("nftConfig").wif);
+    let wif = app.get("nftConfig").wif;
+    if (!wif) {
+      let cryptedWif = app.get("nftConfig").cryptedWif;
+      wif = AES.decrypt_aes(cryptedWif, process.env.WIF_PWD);
+    }
+    PrivateKeyMgr.init(wif);
 
     const { ScriptHelper } = require("./lib/sensible_nft/ScriptHelper");
     const { BlockChainApi, API_NET } = require("./lib/blockchain-api");

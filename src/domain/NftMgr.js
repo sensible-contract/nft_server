@@ -1,9 +1,8 @@
 const { bsv } = require("scryptlib");
 const { app } = require("../app");
-const { ErrCode, Nft } = require("../const");
+const { ErrCode } = require("../const");
 const { IssuerDao } = require("../dao/IssuerDao");
 const { NftDao } = require("../dao/NftDao");
-const { UtxoDao } = require("../dao/UtxoDao");
 const { NFT } = require("../lib/sensible_nft/NFT");
 const {
   ISSUE,
@@ -51,13 +50,11 @@ class Queue {
 }
 class NftMgr {
   static async genesis(genesisMetaTxId, totalSupply) {
-    const nft = new NFT(app.get("nftConfig").satotxPubKey);
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 1 +
       app.get("nftConfig").contractSatoshis * 1;
-    const utxos = [UtxoMgr.fetchUtxo(estimateSatoshis)];
-    let tx;
-    try {
+    return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
+      const nft = new NFT(app.get("nftConfig").satotxPubKey);
       const utxoTxId = utxos[0].txId;
       const utxoOutputIndex = utxos[0].outputIndex;
       nft.setTxGenesisPart({
@@ -77,7 +74,7 @@ class NftMgr {
         utxoTxId
       );
 
-      tx = new bsv.Transaction().from(
+      let tx = new bsv.Transaction().from(
         utxos.map((utxo) => ({
           txId: utxo.txId,
           outputIndex: utxo.outputIndex,
@@ -113,41 +110,8 @@ class NftMgr {
         currTokenId: 0,
       });
 
-      utxos.forEach((v) => {
-        UtxoDao.removeUtxo(
-          PrivateKeyMgr.privateKey.toAddress().toString(),
-          v.txId,
-          v.outputIndex
-        );
-      });
-
       return { genesisId: txid };
-    } catch (e) {
-      console.error(e);
-      if (e.resData) {
-        if (
-          e.resData.body &&
-          e.resData.body.includes("too-long-mempool-chain")
-        ) {
-          utxos.forEach((v) => {
-            v.rootHeight++;
-            UtxoDao.updateUtxo(
-              PrivateKeyMgr.privateKey.toAddress().toString(),
-              v.txId,
-              v.outputIndex,
-              v
-            );
-          });
-        }
-      }
-      UtxoMgr.recycleUtxos(utxos);
-
-      // console.error(tx);
-      // console.error(tx.serialize());
-      throw e;
-    } finally {
-      UtxoMgr.adjustUtxos();
-    }
+    });
   }
 
   static waitIssue(genesisId, metaTxId, receiverAddress) {
@@ -160,28 +124,26 @@ class NftMgr {
     });
   }
   static async issue(genesisId, metaTxId, receiverAddress) {
-    let issuer = await IssuerDao.getIssuer(genesisId);
-    if (!issuer) throw new CodeError(ErrCode.EC_GENESISID_INVALID);
-
-    const genesisOutpointTxId = issuer.genesisTxId;
-    const genesisOutpointIdx = issuer.genesisOutputIndex;
-    const preUtxoTxId = issuer.preTxId;
-    const preUtxoOutputIndex = issuer.preOutputIndex;
-    const preUtxoTxHex = issuer.preTxHex;
-    const spendByTxId = issuer.txId;
-    const spendByOutputIndex = issuer.outputIndex;
-    const spendByTxHex = issuer.txHex;
-    const currTokenId = issuer.currTokenId;
-
-    const nft = new NFT(app.get("nftConfig").satotxPubKey);
-
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 3 +
       app.get("nftConfig").contractSatoshis * 3;
-    const utxos = UtxoMgr.fetchUtxos(estimateSatoshis);
-    console.log("to use utxos", utxos);
-    let tx;
-    try {
+    return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
+      let issuer = await IssuerDao.getIssuer(genesisId);
+      if (!issuer)
+        throw new CodeError(ErrCode.EC_GENESISID_INVALID, "invalid genesisId");
+
+      const genesisOutpointTxId = issuer.genesisTxId;
+      const genesisOutpointIdx = issuer.genesisOutputIndex;
+      const preUtxoTxId = issuer.preTxId;
+      const preUtxoOutputIndex = issuer.preOutputIndex;
+      const preUtxoTxHex = issuer.preTxHex;
+      const spendByTxId = issuer.txId;
+      const spendByOutputIndex = issuer.outputIndex;
+      const spendByTxHex = issuer.txHex;
+      const currTokenId = issuer.currTokenId;
+
+      const nft = new NFT(app.get("nftConfig").satotxPubKey);
+
       nft.setTxGenesisPart({
         prevTxId: genesisOutpointTxId,
         outputIndex: genesisOutpointIdx,
@@ -201,17 +163,19 @@ class NftMgr {
 
       let totalSupply = issuer.totalSupply;
 
-      const opreturnData = null;
-      // const opreturnData = new bsv.Script.buildSafeDataOut(
-      //   JSON.stringify({
-      //     issuer: "satoplay.com",
-      //     title: "Hello Game NFT",
-      //     desc: "issue tokenId " + (currTokenId + 1),
-      //     totalSupply,
-      //   })
-      // );
-      ////////////////
-      // 创建并解锁issue
+      const opreturnDataString = "";
+
+      // you can write something into the dataString,then a new output will be generated
+      // const opreturnDataString = JSON.stringify({
+      //   issuer: "satoplay.com",
+      //   title: "Hello Game NFT",
+      //   desc: "issue tokenId " + (currTokenId + 1),
+      //   totalSupply,
+      // });
+      const opreturnData = opreturnDataString
+        ? new bsv.Script.buildSafeDataOut(opreturnDataString)
+        : null;
+
       let txIssuePl = new PayloadNFT({
         dataType: ISSUE,
         ownerPkh: issuerPkh,
@@ -220,7 +184,7 @@ class NftMgr {
         totalSupply: totalSupply,
       });
 
-      tx = new bsv.Transaction().from(
+      let tx = new bsv.Transaction().from(
         utxos.map((utxo) => ({
           txId: utxo.txId,
           outputIndex: utxo.outputIndex,
@@ -272,7 +236,10 @@ class NftMgr {
       let ret = verifyData.verify();
       if (ret.success == false) {
         console.error(ret);
-        throw new CodeError(ErrCode.EC_CONTRACT_VERIFY_FAILED);
+        throw new CodeError(
+          ErrCode.EC_CONTRACT_VERIFY_FAILED,
+          "contract verify failed"
+        );
       }
       let txid = await ScriptHelper.sendTx(txIssue);
 
@@ -300,64 +267,32 @@ class NftMgr {
         nftId: genesisId + (currTokenId + 1),
       };
       await NftDao.insertNft(dbNft);
-      utxos.forEach((v) => {
-        UtxoDao.removeUtxo(
-          PrivateKeyMgr.privateKey.toAddress().toString(),
-          v.txId,
-          v.outputIndex
-        );
-      });
       return {
         nftId: dbNft.nftId,
         txId: txid,
         tokenId: currTokenId + 1,
       };
-    } catch (e) {
-      console.error(e);
-      if (e.resData) {
-        if (
-          e.resData.body &&
-          e.resData.body.includes("too-long-mempool-chain")
-        ) {
-          utxos.forEach((v) => {
-            v.rootHeight++;
-            UtxoDao.updateUtxo(
-              PrivateKeyMgr.privateKey.toAddress().toString(),
-              v.txId,
-              v.outputIndex,
-              v
-            );
-          });
-        }
-      }
-      UtxoMgr.recycleUtxos(utxos);
-
-      // console.error(tx);
-      // console.error(tx.serialize());
-      throw e;
-    } finally {
-      UtxoMgr.adjustUtxos();
-    }
+    });
   }
 
   static async transfer(nftId, receiverAddress, senderWif) {
-    let nftUtxo = await NftDao.getNft(nftId);
-    if (!nftUtxo) throw new CodeError(ErrCode.EC_NFT_NOT_EXISTED);
-
-    const genesisOutpointTxId = nftUtxo.genesisTxId;
-    const genesisOutpointIdx = nftUtxo.genesisOutputIndex;
-    const preUtxoTxId = nftUtxo.preTxId;
-    const preUtxoOutputIndex = nftUtxo.preOutputIndex;
-    const spendByTxId = nftUtxo.txId;
-    const spendByOutputIndex = nftUtxo.outputIndex;
-
-    const nft = new NFT(app.get("nftConfig").satotxPubKey);
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 2 +
       app.get("nftConfig").contractSatoshis * 2;
-    const utxos = UtxoMgr.fetchUtxos(estimateSatoshis);
-    let tx;
-    try {
+    return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
+      let nftUtxo = await NftDao.getNft(nftId);
+      if (!nftUtxo)
+        throw new CodeError(ErrCode.EC_NFT_NOT_EXISTED, "nft not existed");
+
+      const genesisOutpointTxId = nftUtxo.genesisTxId;
+      const genesisOutpointIdx = nftUtxo.genesisOutputIndex;
+      const preUtxoTxId = nftUtxo.preTxId;
+      const preUtxoOutputIndex = nftUtxo.preOutputIndex;
+      const spendByTxId = nftUtxo.txId;
+      const spendByOutputIndex = nftUtxo.outputIndex;
+
+      const nft = new NFT(app.get("nftConfig").satotxPubKey);
+
       nft.setTxGenesisPart({
         prevTxId: genesisOutpointTxId,
         outputIndex: genesisOutpointIdx,
@@ -395,16 +330,17 @@ class NftMgr {
       );
 
       let metaTxId = spendDataPartHex.slice(29 * 2, 29 * 2 + 32 * 2);
-      const opreturnData = null;
-      // const opreturnData = new bsv.Script.buildSafeDataOut(
-      //   JSON.stringify({
-      //     name: "NFT-EXAMPLE",
-      //     desc: `TRANSFER. TOKENID ${nftUtxo.tokenId}`,
-      //     issuer: "sensible-nft-cmd",
-      //   })
-      // );
-      ////////////////
-      // 创建并解锁issue
+
+      const opreturnDataString = "";
+      // you can write something into the dataString,then a new output will be generated
+      // const opreturnDataString = JSON.stringify({
+      //   name: "NFT-EXAMPLE",
+      //   desc: `TRANSFER. TOKENID ${nftUtxo.tokenId}`,
+      //   issuer: "sensible-nft-cmd",
+      // });
+      const opreturnData = opreturnDataString
+        ? new bsv.Script.buildSafeDataOut(opreturnDataString)
+        : null;
       let txTransferPl = new PayloadNFT({
         dataType: TRANSFER,
         ownerPkh: senderPkh,
@@ -412,7 +348,7 @@ class NftMgr {
         metaTxId,
       });
 
-      tx = new bsv.Transaction().from(
+      let tx = new bsv.Transaction().from(
         utxos.map((utxo) => ({
           txId: utxo.txId,
           outputIndex: utxo.outputIndex,
@@ -463,7 +399,10 @@ class NftMgr {
       let ret = verifyData.verify();
       if (ret.success == false) {
         console.error(ret);
-        throw new CodeError(ErrCode.EC_CONTRACT_VERIFY_FAILED);
+        throw new CodeError(
+          ErrCode.EC_CONTRACT_VERIFY_FAILED,
+          "contract verify failed"
+        );
       }
 
       let txid = await ScriptHelper.sendTx(txTransfer);
@@ -474,42 +413,11 @@ class NftMgr {
         txId: txid,
         outputIndex: 0,
       });
-      utxos.forEach((v) => {
-        UtxoDao.removeUtxo(
-          PrivateKeyMgr.privateKey.toAddress().toString(),
-          v.txId,
-          v.outputIndex
-        );
-      });
+
       return {
         txId: txid,
       };
-    } catch (e) {
-      console.error(e);
-      if (e.resData) {
-        if (
-          e.resData.body &&
-          e.resData.body.includes("too-long-mempool-chain")
-        ) {
-          utxos.forEach((v) => {
-            v.rootHeight++;
-            UtxoDao.updateUtxo(
-              PrivateKeyMgr.privateKey.toAddress().toString(),
-              v.txId,
-              v.outputIndex,
-              v
-            );
-          });
-        }
-      }
-      UtxoMgr.recycleUtxos(utxos);
-
-      // console.error(tx);
-      // console.error(tx.serialize());
-      throw e;
-    } finally {
-      UtxoMgr.adjustUtxos();
-    }
+    });
   }
 }
 
