@@ -15,7 +15,7 @@ import "rabin.scrypt";
 
 contract SatoTx {
   //配合token使用的标签
-  static bytes disableUtxoInGenesisTx = b'5b73656e73696e672d636f6e74726163742d76312e302e302d6e66742d636d642d6578616d706c655d';
+  static bytes disableUtxoInGenesisTx = b'5b73656e73696e672d636f6e74726163742d76312e302e305d';
 
   /**
   * 溯源
