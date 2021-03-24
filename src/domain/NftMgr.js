@@ -51,7 +51,7 @@ class Queue {
 }
 class NftMgr {
   static async genesis(genesisMetaTxId, totalSupply) {
-    const nft = new NFT(true);
+    const nft = new NFT(app.get("nftConfig").satotxPubKey);
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 1 +
       app.get("nftConfig").contractSatoshis * 1;
@@ -173,7 +173,7 @@ class NftMgr {
     const spendByTxHex = issuer.txHex;
     const currTokenId = issuer.currTokenId;
 
-    const nft = new NFT(true);
+    const nft = new NFT(app.get("nftConfig").satotxPubKey);
 
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 3 +
@@ -351,7 +351,7 @@ class NftMgr {
     const spendByTxId = nftUtxo.txId;
     const spendByOutputIndex = nftUtxo.outputIndex;
 
-    const nft = new NFT(true);
+    const nft = new NFT(app.get("nftConfig").satotxPubKey);
     const estimateSatoshis =
       app.get("nftConfig").feeb * 4200 * 2 +
       app.get("nftConfig").contractSatoshis * 2;
