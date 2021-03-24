@@ -453,7 +453,7 @@ class NFT {
       new Bytes(sigInfo.payload),
       new Bytes(sigInfo.padding),
       new Bytes(preDataPartHex),
-      new Bytes(opreturnData.toHex()),
+      new Bytes(opreturnData ? opreturnData.toHex() : ""),
 
       new Sig(toHex(sig)),
       new PubKey(toHex(inputOwnerPk)),

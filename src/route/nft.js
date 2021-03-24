@@ -31,4 +31,13 @@ exports.default = function () {
       return await NftMgr.transfer(nftId, receiverAddress, senderWif);
     }
   );
+
+  NetMgr.listen(
+    "POST",
+    "/api/nft/melt",
+    async function (req, res, params, body) {
+      let { nftId, senderWif } = body;
+      return await NftMgr.transfer(nftId, "", senderWif);
+    }
+  );
 };

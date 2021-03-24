@@ -201,14 +201,15 @@ class NftMgr {
 
       let totalSupply = issuer.totalSupply;
 
-      const opreturnData = new bsv.Script.buildSafeDataOut(
-        JSON.stringify({
-          issuer: "satoplay.com",
-          title: "Hello Game NFT",
-          desc: "issue tokenId " + (currTokenId + 1),
-          totalSupply,
-        })
-      );
+      const opreturnData = null;
+      // const opreturnData = new bsv.Script.buildSafeDataOut(
+      //   JSON.stringify({
+      //     issuer: "satoplay.com",
+      //     title: "Hello Game NFT",
+      //     desc: "issue tokenId " + (currTokenId + 1),
+      //     totalSupply,
+      //   })
+      // );
       ////////////////
       // 创建并解锁issue
       let txIssuePl = new PayloadNFT({
@@ -309,6 +310,7 @@ class NftMgr {
       return {
         nftId: dbNft.nftId,
         txId: txid,
+        tokenId: currTokenId + 1,
       };
     } catch (e) {
       console.error(e);
@@ -365,11 +367,19 @@ class NftMgr {
       const senderPk = bsv.PublicKey.fromPrivateKey(senderPrivKey);
       const senderPkh = bsv.crypto.Hash.sha256ripemd160(senderPk.toBuffer());
 
-      const address = bsv.Address.fromString(
-        receiverAddress,
-        app.get("nftConfig").network == "main" ? "livenet" : "testnet"
-      );
-      const receiver1Pkh = address.hashBuffer;
+      let receiver1Pkh;
+      if (receiverAddress) {
+        const address = bsv.Address.fromString(
+          receiverAddress,
+          app.get("nftConfig").network == "main" ? "livenet" : "testnet"
+        );
+        receiver1Pkh = address.hashBuffer;
+      } else {
+        receiver1Pkh = Buffer.from(
+          "0000000000000000000000000000000000000000",
+          "hex"
+        );
+      }
 
       let preUtxoTxHex = await ScriptHelper.blockChainApi.getRawTxData(
         preUtxoTxId
@@ -385,13 +395,14 @@ class NftMgr {
       );
 
       let metaTxId = spendDataPartHex.slice(29 * 2, 29 * 2 + 32 * 2);
-      const opreturnData = new bsv.Script.buildSafeDataOut(
-        JSON.stringify({
-          name: "NFT-EXAMPLE",
-          desc: `TRANSFER. TOKENID ${nftUtxo.tokenId}`,
-          issuer: "sensible-nft-cmd",
-        })
-      );
+      const opreturnData = null;
+      // const opreturnData = new bsv.Script.buildSafeDataOut(
+      //   JSON.stringify({
+      //     name: "NFT-EXAMPLE",
+      //     desc: `TRANSFER. TOKENID ${nftUtxo.tokenId}`,
+      //     issuer: "sensible-nft-cmd",
+      //   })
+      // );
       ////////////////
       // 创建并解锁issue
       let txTransferPl = new PayloadNFT({

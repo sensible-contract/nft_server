@@ -65,7 +65,7 @@ src/config/nft.json
     "maxSplit": 100,//utxo最大拆分数量
     "unitSatoshis": 10000,//拆分的每个utxo所含金额
     "contractSatoshis": 1000, //合约输出所含金额
-    "satotxApiPrefix": "https://api.satotx.com"//签名器API，可以自行部署
+    "satotxApiPrefix": "https://api.satotx.com"//签名器API，可以自行部署 https://github.com/sensing-contract/satotx
   },
   "production": {//可以追加其他的配置，在启动的时候需要指定 env=production
     "wif": "xxxxxx",
@@ -96,10 +96,9 @@ node src/app.js env=production
 ## <span id="apimethod">Api Method</span>
 
 - [genesis](#genesis)
-
 - [issue](#issue)
-
 - [transfer](#transfer)
+- [melt](#melt)
 
 ### <span id="genesis">genesis</span>
 
@@ -192,6 +191,36 @@ curl -X POST -H "Content-Type: application/json" --data '{
   "msg": "",
   "data": {
     "txId": "4d83502c13568c24485a2af9bfb5dd5cd764232c9b8b11b287151d10b6995810"
+  }
+}
+```
+
+### <span id="melt">melt</span>
+
+- params
+
+| param     | required | type   | note       |
+| --------- | -------- | ------ | ---------- |
+| nftId     | true     | string | nftId      |
+| senderWif | true     | string | sender wif |
+
+- req
+
+```shell
+curl -X POST -H "Content-Type: application/json" --data '{
+    "nftId":"fd7117f26c7fedb2a5e9bb17ed94f42142e2f2d51cd6b80e25cb7874625dadd51",
+    "senderWif":"cN2gor4vF2eQ1PmzTzJEwps6uvTK4QToUgTxGHN1xUxZ34djL8vR"
+}' http://127.0.0.1:8092/api/nft/melt
+```
+
+- rsp
+
+```json
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "txId": "b584e8250a48b4034059c9dee5829393e403666f6872e82a69b89f79c886a3fa"
   }
 }
 ```
